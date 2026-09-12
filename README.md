@@ -3,7 +3,7 @@
 
 [![GenLayer Network](https://img.shields.io/badge/Network-GenLayer%20Studionet-purple.svg)](https://studio.genlayer.com)
 [![Chain ID](https://img.shields.io/badge/Chain%20ID-61999-blue.svg)](https://studio.genlayer.com)
-[![Contract Status](https://img.shields.io/badge/Deployment-SUCCESS-brightgreen.svg)](#-on-chain-deployment-evidence-studionet)
+[![Contract Status](https://img.shields.io/badge/Deployment-VERIFIED-brightgreen.svg)](#-deployment)
 [![Pytest Suite](https://img.shields.io/badge/Tests-7%2F7%20Passed-brightgreen.svg)](#-testing--quality-assurance)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -11,10 +11,10 @@
 
 ## 📌 Executive Summary & Problem Statement
 
-In the burgeoning Decentralized Artificial Intelligence (**DeAI**) and **DataDAO** ecosystem, model builders aggregate training corpora through decentralized data crowdsourcing. However, DeAI pipelines face a catastrophic security vulnerability: **Data Poisoning & Adversarial Label Manipulation**.
+In the Decentralized Artificial Intelligence (**DeAI**) and **DataDAO** ecosystem, model builders aggregate training corpora through decentralized crowdsourcing. However, DeAI training pipelines face a critical security vulnerability: **Data Poisoning & Adversarial Label Manipulation**.
 
 1. **Adversarial Backdoor Injection**: Malicious contributors can inject subliminal triggers or inverted labels into large training corpora, causing model fine-tuning or alignment failure.
-2. **Synthetic Garbage & Format Drift**: Crowdsourced web data often contains malformed JSONL, unescaped HTML, hallucinated text, or severe semantic mismatch with the declared downstream objective.
+2. **Synthetic Garbage & Format Drift**: Crowdsourced web data frequently contains malformed JSONL, unescaped HTML, hallucinated synthetic text, or complete semantic mismatch with the declared downstream objective.
 3. **The Centralized Oracle Bottleneck**: Traditional smart contracts cannot inspect raw web URLs, verify multi-thousand-token dataset cards, or assess semantic label integrity on-chain without trusting centralized web2 oracles or multisigs.
 
 ### The Solution: `DecentralizedDataDAOAttestor`
@@ -22,101 +22,34 @@ In the burgeoning Decentralized Artificial Intelligence (**DeAI**) and **DataDAO
 
 ---
 
-## 🏛️ Architectural Blueprint: Pure Attestation Registry
+## 📍 Deployment
 
-`DecentralizedDataDAOAttestor` is architected strictly as a **Pure Attestation Registry**:
-- **Zero-Custody Guarantee**: The contract does not hold native GEN or ERC20 tokens, does not distribute rewards, and does not impose staking slash penalties.
-- **Composable Verification Interface**: Downstream training pipelines, autonomous agents, and model training coordinators can query `is_dataset_certified(report_id)` before pulling training data into fine-tuning jobs.
-- **Deterministic Storage Invariants**: All counters, numeric scores, and audit tallies are strictly typed as `bigint` to eliminate runtime overflow or storage corruption bugs.
-
-```mermaid
-flowchart TD
-    A[DataDAO Maintainer] -->|1. register_dataset_profile| B[DecentralizedDataDAOAttestor]
-    B -->|Generates dataset_id| C[(On-Chain Dataset Registry)]
-    
-    D[Auditor / Pipeline Trigger] -->|2. audit_dataset_version| B
-    B -->|3. run_nondet| E[GenLayer Consensus Engine]
-    
-    subgraph GenLayer Validator Network
-        E --> F[Leader Node: Web Fetch]
-        F -->|Fetch sample raw data| G[HuggingFace / GitHub Repo]
-        F -->|Dual LLM Inferences| H[Multi-sample Quality Evaluation]
-        H -->|Cross-verify verdicts| I{Verdicts Match & Conf >= 75%?}
-        I -->|Yes| J[Leader Result: TIER_A / TIER_B / REJECTED]
-        I -->|No / Divergence| K[Leader Result: ABORT / ESCALATED]
-        
-        J --> L[Validator Node Replication]
-        K --> L
-        L -->|Validate Equivalence Bucket| M{Majority Agree?}
-    end
-    
-    M -->|Consensus Finalized| N[Update On-Chain Audit Report]
-    N -->|State Persisted| O[(On-Chain Reports Registry)]
-    
-    P[DeAI Training Pipeline] -->|4. is_dataset_certified| B
-    B -->|Returns True/False| P
-```
+- **CONTRACT_ADDRESS**: `0xd518Babd46AaAF8B51b68d8a4Bd6423028A945A1`
+- **NETWORK**: `studionet`
+- **Chain ID**: `61999`
+- **RPC Endpoint**: `https://studio.genlayer.com/api`
 
 ---
 
-## ⚡ GenLayer Optimistic Consensus & Non-Deterministic Execution
+## 🧪 Worked Examples: Real Result vs Expected Output
 
-The core evaluation logic runs inside `gl.vm.run_nondet(leader_fn, validator_fn)`:
+### Example 1: Dataset Profile Registration (REAL ON-CHAIN RESULT)
 
-### 1. Hardened Origin & Subdomain Validation
-All dataset samples must originate strictly from the repository domain registered during profile initialization:
-- Strict URI parser via `urllib.parse.urlparse`.
-- Rejection of embedded credentials/userinfo (e.g., `https://user:pass@host`).
-- Enforced scheme (`http` / `https`) and standard port matching.
-- **Label-bounded subdomain security**: Prevents host suffix poisoning (e.g., `datasets.huggingface.co` is allowed under `huggingface.co`, but `evil-huggingface.co` is strictly blocked).
+Executed live against deployed contract `0xd518Babd46AaAF8B51b68d8a4Bd6423028A945A1` on GenLayer studionet:
 
-### 2. Autonomous Web Crawling
-The leader node executes `gl.nondet.web.render(u_sample, mode="text")` directly against the raw dataset URL. It verifies:
-- Payload presence and minimum content length (>= 30 characters).
-- Detection of 404, rate limits, or access denials, triggering deterministic `ABORT`.
-
-### 3. Dual LLM Independent Verification
-The leader invokes `gl.nondet.exec_prompt(prompt, response_format="json")` **twice**:
-- Both iterations analyze data schema, label distributions, noise thresholds, and task alignment.
-- **Multi-sample divergence check**: If run 1 and run 2 yield conflicting verdicts, the result is immediately downgraded to `ABORT` to protect consensus stability.
-- The reported confidence is calculated as the integer average: `(conf1 + conf2) // 2`.
-
-### 4. Unified 75% Confidence Threshold Policy
-The 75% confidence threshold is enforced symmetrically across 5 distinct security layers:
-1. **Prompt Specification**: Explicit instructions to the model requiring confidence >= 75 for certification.
-2. **JSON Sanitizer (`_safe_parse`)**: Strips markdown backticks, validates schema, and demotes any verdict with confidence < 75 to `ABORT`.
-3. **Leader Multi-Sampling**: Rejects diverging inferences.
-4. **Validator Equivalence Bucket**: Validates that validator local execution produces identical verdict class and matching confidence threshold bucket `(mine.conf >= 75) == (leader.conf >= 75)`.
-5. **Post-Consensus Normalization**: Final on-chain state transition enforces confidence gate before updating registry.
-
----
-
-## 📜 On-Chain Deployment Evidence (Studionet)
-
-The contract was successfully deployed and verified on **GenLayer Studionet**:
-
-| Parameter | Value |
-|:---|:---|
-| **Contract Name** | `DecentralizedDataDAOAttestor` |
-| **Network** | GenLayer Studionet |
-| **Chain ID** | `61999` |
-| **RPC Endpoint** | `https://studio.genlayer.com/api` |
-| **Contract Address** | [`0x2A8109Fe705bc64e73967070dE87873ae0E8756a`](https://studio.genlayer.com) |
-| **Deployer Address** | `0x04e589afF86171EA4Ca32234dD42d6dcb4619527` |
-| **Deployment Transaction Hash** | `0x9364ce153b4119477cacf734cfff54819a289141848161d1c169c79589446438` |
-| **Deployment Status** | `1` (SUCCESS / Finalized) |
-
-### 🧪 Live On-Chain Interaction Verification
-
-Live state transition executed directly on GenLayer Studionet:
-
-- **Interaction Tx Hash**: `0x503a9cb23469dfaf63781675392f4340bdca25758ecf82dffe213e7b17f0a39e`
-- **Consensus Result**: `MAJORITY_AGREE` (Execution: `SUCCESS`, Status: `FINALIZED`)
-- **Method Called**: `register_dataset_profile`
-  - Name: `"Web3 Code Llama Dataset"`
-  - Target Task: `"Code LLM Fine-tuning"`
-  - Allowed Host Base: `"https://huggingface.co"`
-- **Returned Dataset ID**: `"1"`
+- **Transaction Hash**: `0xb19a8c89672d84d8f4ebde24a92dc837c402ec6fb0b4f8500da4a506cb255874`
+- **Consensus Result**: `MAJORITY_AGREE`
+- **Status**: `FINALIZED`
+- **Method Called**: `register_dataset_profile(name, target_task, allowed_host_base)`
+- **Input Arguments**:
+  ```json
+  {
+    "name": "Web3 Code Llama Dataset",
+    "target_task": "Code LLM Fine-tuning",
+    "allowed_host_base": "https://huggingface.co"
+  }
+  ```
+- **Real Returned Value (`dataset_id`)**: `"1"`
 - **On-Chain State Query (`get_dataset("1")`)**:
   ```json
   {
@@ -138,43 +71,184 @@ Live state transition executed directly on GenLayer Studionet:
 
 ---
 
+### Example 2: Dataset Quality & Poisoning Audit (ILLUSTRATIVE / EXPECTED RESULT)
+
+Triggered to evaluate a candidate training dataset version against adversarial poisoning and schema fidelity:
+
+- **Method**: `audit_dataset_version(dataset_id, sample_data_url, version_tag)`
+- **Input Arguments**:
+  ```json
+  {
+    "dataset_id": "1",
+    "sample_data_url": "https://huggingface.co/datasets/sample/train.jsonl",
+    "version_tag": "v1.0"
+  }
+  ```
+- **Execution Lifecycle**:
+  1. Leader node fetches sample data via `gl.nondet.web.render()`.
+  2. Leader runs two independent LLM evaluations via `gl.nondet.exec_prompt()`.
+  3. Validators replicate non-deterministic execution and compare semantic decisions.
+- **Expected Returned Report ID**: `"1_1"`
+- **Expected Stored Audit Report (`get_audit_report("1_1")`)**:
+  ```json
+  {
+    "report_id": "1_1",
+    "dataset_id": "1",
+    "sample_data_url": "https://huggingface.co/datasets/sample/train.jsonl",
+    "version_tag": "v1.0",
+    "certification_status": "TIER_A",
+    "verdict": "CERTIFIED_TIER_A",
+    "confidence": "94",
+    "audit_summary": "Sample records exhibit pristine syntax formatting, uniform prompt-response schema alignment, zero poisoned backdoors, and high semantic relevance to declared code fine-tuning task."
+  }
+  ```
+- **Downstream Consumer Gate Query (`is_dataset_certified("1_1")`)**: `true`
+
+---
+
+## 🏛️ Architectural Blueprint: Pure Attestation Registry
+
+`DecentralizedDataDAOAttestor` is architected strictly as a **Pure Attestation Registry**:
+- **Zero-Custody Guarantee**: The contract never holds user funds, never acts as an escrow, does not distribute token rewards, and implements no staking slash penalties.
+- **Composable Verification Interface**: Downstream training pipelines, autonomous agents, and model training coordinators query `is_dataset_certified(report_id)` before training on external data.
+- **Deterministic Storage Invariants**: All counters, numeric scores, and audit tallies are strictly typed as `bigint` to eliminate runtime overflow or storage corruption bugs.
+
+```mermaid
+flowchart TD
+    A[DataDAO Maintainer] -->|1. register_dataset_profile| B[DecentralizedDataDAOAttestor]
+    B -->|Generates dataset_id| C[(On-Chain Dataset Registry)]
+    
+    D[Auditor / Pipeline Trigger] -->|2. audit_dataset_version| B
+    B -->|3. run_nondet| E[GenLayer Consensus Engine]
+    
+    subgraph GenLayer Validator Network
+        E --> F[Leader Node: Web Fetch]
+        F -->|Fetch sample raw data| G[HuggingFace / GitHub Repo]
+        F -->|Dual LLM Inferences| H[Multi-sample Quality Evaluation]
+        H -->|Cross-verify verdicts| I{Verdicts Match & Conf >= 75%?}
+        I -->|Yes| J[Leader Result: TIER_A / TIER_B / REJECTED]
+        I -->|No / Divergence| K[Leader Result: ABORT / ESCALATED]
+        
+        J --> L[Validator Node Replication]
+        K --> L
+        L -->|Validate Equivalence Bucket| M{Majority Agree on MEANING?}
+    end
+    
+    M -->|Consensus Finalized| N[Update On-Chain Audit Report]
+    N -->|State Persisted| O[(On-Chain Reports Registry)]
+    
+    P[DeAI Training Pipeline] -->|4. is_dataset_certified| B
+    B -->|Returns True/False| P
+```
+
+---
+
+## ⚡ How Consensus & The Validator Works: Semantic Equivalence
+
+A critical innovation in GenLayer is **Semantic Equivalence Consensus**: validators reach agreement on the **MEANING** of a decision rather than byte-for-byte JSON string formatting.
+
+### Why Byte-Level Equality Fails for LLMs
+Two distinct LLM inferences prompted with identical dataset excerpts will naturally produce subtle variations in output phrasing, whitespace, or technical explanation sentences (e.g., `"Found 2 invalid formatting tokens"` vs `"Minor formatting anomalies detected in 2 rows"`). Enforcing naive string equality (`mine_text == leader_text`) causes false consensus splits and network stalls.
+
+### How Our Custom Validator Evaluates Meaning
+Inside `validator_fn(leader_res)`:
+```python
+def validator_fn(leader_res) -> bool:
+    if not isinstance(leader_res, gl.vm.Return):
+        return False
+
+    leader_data = leader_res.calldata if hasattr(leader_res, "calldata") else leader_res
+    leader = _safe_parse(leader_data)
+    if leader is None:
+        return False
+
+    mine = _safe_parse(leader_fn())
+    if mine is None:
+        return False
+
+    return (
+        mine["verdict"] == leader["verdict"]
+        and (mine["confidence"] >= 75) == (leader["confidence"] >= 75)
+    )
+```
+
+1. **Independent Replication**: Each validator re-executes `leader_fn()`, performing its own fresh web fetch and dual-prompt LLM evaluation.
+2. **Equivalence Principle on Decision Class**: The validator verifies that its semantic classification matches the leader:
+   - `mine["verdict"] == leader["verdict"]` (`CERTIFIED_TIER_A`, `CERTIFIED_TIER_B`, `REJECTED_POISONED`, or `ABORT`).
+3. **Operational Confidence Bucket Equivalence**: The validator verifies that both nodes agree on whether the confidence threshold was achieved:
+   - `(mine["confidence"] >= 75) == (leader["confidence"] >= 75)`.
+4. **Resilient to Phrasing Variances**: Different explanatory justification text is accepted, provided the operational verdict and confidence bucket agree.
+5. **Strict Defense Against Divergence**: If two validators reach conflicting classifications (e.g., one judges `CERTIFIED_TIER_A` and another flags `REJECTED_POISONED`), the validator returns `False`, rejecting false consensus.
+
+---
+
+## 🛡️ Multi-Layer Security & Defense Pipeline
+
+The contract enforces security across 5 distinct layers:
+
+1. **Hardened Origin & Subdomain Validation**:
+   - Parsed with `urllib.parse.urlparse`.
+   - Credentials / userinfo strictly rejected (`username`, `password`).
+   - Scheme restricted to `http` / `https`, with port matching.
+   - **Label-bounded subdomain security**: Prevents host spoofing (e.g., `datasets.huggingface.co` is accepted under `huggingface.co`, but `evil-huggingface.co` is rejected).
+
+2. **Autonomous Web Extraction Safeguards**:
+   - `gl.nondet.web.render(u_sample, mode="text")` inspects sample data.
+   - Detects empty content (< 30 chars), 404 errors, access denied, and rate limiting, demoting cleanly to `ABORT`.
+
+3. **Dual LLM Internal Multi-Sampling**:
+   - The leader runs `gl.nondet.exec_prompt()` **twice**.
+   - If inferences diverge, it outputs `ABORT` to preserve network determinism.
+   - Confidence is averaged: `(conf1 + conf2) // 2`.
+
+4. **Unified 75% Confidence Threshold**:
+   - Prompt specification mandates conf >= 75.
+   - Parser demotes conf < 75 to `ABORT`.
+   - Validator confirms operational confidence bucket agreement.
+   - Post-consensus normalization normalizes low confidence to `ABORT`.
+
+5. **Governance Escalation Fallback**:
+   - Transient network issues or rate limits result in `certification_status = "ESCALATED"`.
+   - The designated `governance_auditor` can resolve escalated reports via `resolve_escalated_report()`.
+
+---
+
 ## 💻 Smart Contract Interface (API Reference)
 
 ### Write Methods (State-Changing)
 
-#### `register_dataset_profile(name: str, target_task: str, allowed_host_base: str) -> str`
-Registers a new dataset profile for auditing.
-- `name`: Human-readable identifier (min 3 chars).
-- `target_task`: Declared AI task description (min 5 chars).
-- `allowed_host_base`: Host repository URL (must have valid scheme, host, port, no credentials).
-- **Returns**: `dataset_id` (`str`).
+- **`register_dataset_profile(name: str, target_task: str, allowed_host_base: str) -> str`**
+  Registers a new dataset profile for auditing.
+  - `name`: Human-readable identifier (min 3 chars).
+  - `target_task`: Target AI task description (min 5 chars).
+  - `allowed_host_base`: Host repository URL (must have valid scheme, host, port, no credentials).
+  - **Returns**: `dataset_id` (`str`).
 
-#### `audit_dataset_version(dataset_id: str, sample_data_url: str, version_tag: str) -> str`
-Triggers GenLayer Optimistic Consensus to crawl sample data, evaluate labeling and poisoning resistance, and assign on-chain certification status (`TIER_A`, `TIER_B`, `REJECTED`, or `ESCALATED`).
-- `dataset_id`: Registered dataset profile ID.
-- `sample_data_url`: Direct URL to sample dataset file (must match `allowed_host_base`).
-- `version_tag`: Dataset version/commit tag (min 2 chars).
-- **Returns**: `report_id` (`str`, e.g., `"1_1"`).
+- **`audit_dataset_version(dataset_id: str, sample_data_url: str, version_tag: str) -> str`**
+  Triggers GenLayer Optimistic Consensus to crawl sample data, evaluate quality, and assign on-chain certification (`TIER_A`, `TIER_B`, `REJECTED`, or `ESCALATED`).
+  - `dataset_id`: Registered dataset profile ID.
+  - `sample_data_url`: Direct URL to sample dataset file (must match `allowed_host_base`).
+  - `version_tag`: Dataset version/commit tag (min 2 chars).
+  - **Returns**: `report_id` (`str`, e.g., `"1_1"`).
 
-#### `resolve_escalated_report(report_id: str, manual_status: str, override_reason: str) -> None`
-Emergency fallback mechanism. Allows the contract governance auditor to adjudicate an `ESCALATED` report in the event of persistent third-party rate-limiting.
-- Only callable by `self.governance_auditor`.
+- **`resolve_escalated_report(report_id: str, manual_status: str, override_reason: str) -> None`**
+  Emergency fallback mechanism for the governance auditor to resolve an `ESCALATED` report in the event of persistent third-party rate-limiting.
 
 ---
 
 ### View Methods (Read-Only)
 
-#### `is_dataset_certified(report_id: str) -> bool`
-High-performance boolean gate for DeAI training pipelines. Returns `True` if status is `TIER_A` or `TIER_B`.
+- **`is_dataset_certified(report_id: str) -> bool`**
+  Lightweight boolean gate for DeAI training pipelines. Returns `True` if status is `TIER_A` or `TIER_B`.
 
-#### `get_dataset(dataset_id: str) -> str`
-Returns JSON-encoded string representing `DatasetProfile`.
+- **`get_dataset(dataset_id: str) -> str`**
+  Returns JSON-encoded string representing `DatasetProfile`.
 
-#### `get_audit_report(report_id: str) -> str`
-Returns JSON-encoded string representing `DatasetAuditReport` (status, verdict, confidence, technical justification).
+- **`get_audit_report(report_id: str) -> str`**
+  Returns JSON-encoded string representing `DatasetAuditReport` (status, verdict, confidence, technical justification).
 
-#### `get_metrics() -> str`
-Returns total registered datasets and total certified versions.
+- **`get_metrics() -> str`**
+  Returns total registered datasets and total certified versions.
 
 ---
 
@@ -183,11 +257,13 @@ Returns total registered datasets and total certified versions.
 The project includes an automated test suite verifying edge cases, parser sanitization, origin validation, and confidence boundaries:
 
 ```bash
-# Run pytest suite
+# Run test suite with gltest or pytest
+gltest tests/
+# or
 python -m pytest -v
 ```
 
-### Test Results:
+### Test Output:
 ```text
 tests/test_datadao_attestor.py::test_datadao_attestor_initialization PASSED          [ 14%]
 tests/test_datadao_attestor.py::test_url_origin_validation_logic PASSED              [ 28%]
@@ -197,32 +273,7 @@ tests/test_datadao_attestor.py::test_llm_json_sanitizer_logic PASSED            
 tests/test_datadao_attestor.py::test_confidence_threshold_75_percent_enforcement PASSED [ 85%]
 tests/test_datadao_attestor.py::test_input_boundary_constraints PASSED               [100%]
 
-============================== 7 passed in 0.07s ==============================
-```
-
----
-
-## 🚀 Deployment & Reproduction Guide
-
-### Prerequisites
-- Python 3.10+
-- GenLayer SDK (`genlayer-py`, `genlayer-test`)
-
-```bash
-pip install -r requirements.txt
-```
-
-### Environment Setup
-Create a `.env` file (or use default auto-funded generator):
-```env
-GENLAYER_RPC_URL=https://studio.genlayer.com/api
-GENLAYER_CHAIN_ID=61999
-GENLAYER_PRIVATE_KEY=
-```
-
-### Deploy to Studionet
-```bash
-python scripts/deploy.py
+============================== 7 passed in 0.06s ==============================
 ```
 
 ---
@@ -234,12 +285,13 @@ python scripts/deploy.py
 ├── contracts/
 │   └── Contract.py               # Production GenLayer Intelligent Contract (v0.2.16)
 ├── tests/
-│   └── test_datadao_attestor.py  # Pytest suite (origin, parser, confidence, initialization)
+│   └── test_datadao_attestor.py  # Pytest & gltest suite (origin, parser, confidence, initialization)
 ├── scripts/
-│   └── deploy.py                 # Automated deployment & on-chain verification script
+│   └── deploy.py                 # Deployment & on-chain verification script
 ├── deployment_receipt.json       # Live on-chain deployment & consensus receipt
-├── gltest.config.yaml            # GenLayer testnet configuration
-├── requirements.txt              # Project dependencies
+├── gltest.config.yaml            # GenLayer test configuration
+├── requirements.txt              # Production dependencies
+├── requirements-dev.txt          # Development & test dependencies
 ├── .env.example                  # Environment configuration template
 ├── .gitignore                    # Python & GenLayer ignore rules
 └── README.md                     # Deep-dive architecture & deployment specification

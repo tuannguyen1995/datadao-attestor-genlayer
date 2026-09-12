@@ -4,12 +4,8 @@
   "network": "studionet",
   "chain_id": 61999,
   "rpc_url": "https://studio.genlayer.com/api",
-  "contract_address": "0x2A8109Fe705bc64e73967070dE87873ae0E8756a",
-  "deployer_address": "0x04e589afF86171EA4Ca32234dD42d6dcb4619527",
-  "deployment_tx_hash": "0x9364ce153b4119477cacf734cfff54819a289141848161d1c169c79589446438",
-  "deployment_status": "SUCCESS",
-  "receipt_status": 1,
-  "example_interaction_tx_hash": "0x503a9cb23469dfaf63781675392f4340bdca25758ecf82dffe213e7b17f0a39e",
+  "contract_address": "0xd518Babd46AaAF8B51b68d8a4Bd6423028A945A1",
+  "example_interaction_tx_hash": "0xb19a8c89672d84d8f4ebde24a92dc837c402ec6fb0b4f8500da4a506cb255874",
   "interaction_status": "FINALIZED",
   "interaction_consensus_result": "MAJORITY_AGREE",
   "sample_registered_dataset": {
@@ -25,5 +21,5 @@
     "total_certified_versions": "0"
   },
   "verified_onchain": true,
-  "deployed_at": "2026-09-12 15:01:35 UTC"
+  "deployed_at": "2026-09-12 15:09:09 UTC"
 }
