@@ -1,0 +1,29 @@
+{
+  "contract_name": "DecentralizedDataDAOAttestor",
+  "kebab_name": "datadao-attestor-genlayer",
+  "network": "studionet",
+  "chain_id": 61999,
+  "rpc_url": "https://studio.genlayer.com/api",
+  "contract_address": "0x2A8109Fe705bc64e73967070dE87873ae0E8756a",
+  "deployer_address": "0x04e589afF86171EA4Ca32234dD42d6dcb4619527",
+  "deployment_tx_hash": "0x9364ce153b4119477cacf734cfff54819a289141848161d1c169c79589446438",
+  "deployment_status": "SUCCESS",
+  "receipt_status": 1,
+  "example_interaction_tx_hash": "0x503a9cb23469dfaf63781675392f4340bdca25758ecf82dffe213e7b17f0a39e",
+  "interaction_status": "FINALIZED",
+  "interaction_consensus_result": "MAJORITY_AGREE",
+  "sample_registered_dataset": {
+    "dataset_id": "1",
+    "maintainer": "0x04e589aff86171ea4ca32234dd42d6dcb4619527",
+    "name": "Web3 Code Llama Dataset",
+    "target_task": "Code LLM Fine-tuning",
+    "allowed_host_base": "https://huggingface.co",
+    "total_audits": "0"
+  },
+  "onchain_metrics": {
+    "total_registered_datasets": "1",
+    "total_certified_versions": "0"
+  },
+  "verified_onchain": true,
+  "deployed_at": "2026-09-12 15:01:35 UTC"
+}
